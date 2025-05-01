@@ -197,14 +197,14 @@
         <!-- Break Popup Elements -->
         <div id="blur-overlay"></div>
         <div id="break-popup">
-            <h2>⏰ Time for a Break!</h2>
+            <h2>Time for a Break!</h2>
+			<p>You've been playing for a while! Time to take a break!</p>
             <div id="timer">05:00</div>
             <p>Resuming in...</p>
         </div>
     </div>
 
 <script>
-    // Fullscreen Logic
     const topBar = document.getElementById('top-bar');
     const navTab = document.getElementById('nav-tab');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -225,14 +225,12 @@
         }
     }
 
-    // Fullscreen Event Listeners
     document.addEventListener('fullscreenchange', () => {
         isFullscreen = !!document.fullscreenElement;
         navTab.classList.toggle('visible', isFullscreen);
         topBar.classList.toggle('hidden', isFullscreen);
     });
 
-    // Tab Interaction
     navTab.addEventListener('mouseenter', () => {
         if (isFullscreen) {
             topBar.classList.remove('hidden');
@@ -243,10 +241,9 @@
         }
     });
 
-    // Break Timer Logic (From Previous Implementation)
     let breakTimer;
     let remainingTime = 300;
-
+	let timeUntil = 10 * 60 * 1000
     function showBreakPopup() {
         document.getElementById('blur-overlay').style.display = 'block';
         document.getElementById('break-popup').style.display = 'block';
@@ -265,7 +262,7 @@
                 document.getElementById('blur-overlay').style.display = 'none';
                 document.getElementById('break-popup').style.display = 'none';
                 remainingTime = 300;
-                setTimeout(showBreakPopup, 600000);
+                setTimeout(showBreakPopup, timeUntil);
             }
         }, 1000);
     }
@@ -273,7 +270,7 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
         // Start break timer
-        setTimeout(showBreakPopup, 600000);
+        setTimeout(showBreakPopup, timeUntil);
 
         // Set active nav link
         document.querySelectorAll('.nav-link').forEach(link => {

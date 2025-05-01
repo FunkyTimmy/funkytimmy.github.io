@@ -1,10 +1,288 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<title>Test</title>
-	</head>
-	<body>
-		<h1>This is a website</h1>
-		<a href="about" target="_blank">Click me!</a>
-	</body>
+<head>
+<style>
+    :root {
+        --neon-blue: #4dabff;
+        --dark-purple: #2a0a47;
+        --neon-purple: #bc13fe;
+        --dark-bg: linear-gradient(45deg, #0a0025 0%, #1a003a 100%);
+    }
+
+    /* Core Reset */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body, html {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--dark-bg);
+        color: white;
+        font-family: 'Arial', sans-serif;
+    }
+
+    /* Fullscreen Container */
+    #game-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    /* Navigation Bar */
+    #top-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 1rem;
+        background: rgba(42, 10, 71, 0.95);
+        backdrop-filter: blur(10px);
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        z-index: 1000;
+        transition: transform 0.3s ease;
+    }
+
+    #top-bar.hidden {
+        transform: translateY(-100%);
+    }
+
+    /* Navigation Tab */
+    #nav-tab {
+        position: fixed;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 20px;
+        background: var(--neon-blue);
+        border-radius: 0 0 5px 5px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        z-index: 1001;
+    }
+
+    #nav-tab.visible {
+        opacity: 1;
+    }
+
+    /* Navigation Links */
+    .nav-link {
+        color: var(--neon-blue);
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .nav-link::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: var(--neon-purple);
+        transition: width 0.3s ease;
+    }
+
+    .nav-link:hover::after {
+        width: 100%;
+    }
+
+    /* Fullscreen Button */
+    #fullscreen-btn {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(77, 171, 255, 0.2);
+        border: 1px solid var(--neon-blue);
+        color: var(--neon-blue);
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+        z-index: 1001;
+    }
+
+    #fullscreen-btn:hover {
+        background: var(--neon-blue);
+        color: black;
+        box-shadow: 0 0 15px var(--neon-blue);
+    }
+
+    /* Fullscreen Overrides */
+    :fullscreen #top-bar,
+    :-webkit-full-screen #top-bar,
+    :-moz-full-screen #top-bar {
+        display: flex;
+        transform: translateY(-100%);
+    }
+
+    :fullscreen #nav-tab,
+    :-webkit-full-screen #nav-tab,
+    :-moz-full-screen #nav-tab {
+        opacity: 1;
+    }
+
+    /* Break Popup (From Previous Implementation) */
+    #break-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(145deg, #1a003a 0%, #0a0025 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid var(--neon-purple);
+        box-shadow: 0 0 40px var(--neon-purple);
+        text-align: center;
+        z-index: 2000;
+        display: none;
+    }
+
+    #timer {
+        font-size: 2.5em;
+        font-weight: bold;
+        background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin: 1rem 0;
+    }
+
+    /* Content Area */
+    #main-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        padding-top: 70px;
+    }
+
+    /* Animation */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+</style>
+</head>
+<body>
+    <div id="game-container">
+        <nav id="top-bar">
+            <a href="index.html" class="nav-link">Home</a>
+            <a href="about" class="nav-link">About</a>
+            <a href="settings" class="nav-link">Settings</a>
+        </nav>
+        
+        <div id="nav-tab"></div>
+        <button id="fullscreen-btn">⛶ Fullscreen</button>
+
+        <div id="main-content">
+            <!-- Insert your game/content here -->
+			<h1>Welcome to the home page!</h1>
+        <!-- Break Popup Elements -->
+        <div id="blur-overlay"></div>
+        <div id="break-popup">
+            <h2>⏰ Time for a Break!</h2>
+            <div id="timer">05:00</div>
+            <p>Resuming in...</p>
+        </div>
+    </div>
+
+<script>
+    // Fullscreen Logic
+    const topBar = document.getElementById('top-bar');
+    const navTab = document.getElementById('nav-tab');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    let isFullscreen = false;
+    let hideTimeout;
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen()
+                .then(() => {
+                    isFullscreen = true;
+                    navTab.classList.add('visible');
+                    topBar.classList.add('hidden');
+                })
+                .catch(err => console.error('Fullscreen error:', err));
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    // Fullscreen Event Listeners
+    document.addEventListener('fullscreenchange', () => {
+        isFullscreen = !!document.fullscreenElement;
+        navTab.classList.toggle('visible', isFullscreen);
+        topBar.classList.toggle('hidden', isFullscreen);
+    });
+
+    // Tab Interaction
+    navTab.addEventListener('mouseenter', () => {
+        if (isFullscreen) {
+            topBar.classList.remove('hidden');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                topBar.classList.add('hidden');
+            }, 2000);
+        }
+    });
+
+    // Break Timer Logic (From Previous Implementation)
+    let breakTimer;
+    let remainingTime = 300;
+
+    function showBreakPopup() {
+        document.getElementById('blur-overlay').style.display = 'block';
+        document.getElementById('break-popup').style.display = 'block';
+        startCountdown();
+    }
+
+    function startCountdown() {
+        breakTimer = setInterval(() => {
+            remainingTime--;
+            const minutes = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+            const seconds = (remainingTime % 60).toString().padStart(2, '0');
+            document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+
+            if (remainingTime <= 0) {
+                clearInterval(breakTimer);
+                document.getElementById('blur-overlay').style.display = 'none';
+                document.getElementById('break-popup').style.display = 'none';
+                remainingTime = 300;
+                setTimeout(showBreakPopup, 600000);
+            }
+        }, 1000);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        // Start break timer
+        setTimeout(showBreakPopup, 600000);
+
+        // Set active nav link
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.href === window.location.href) {
+                link.classList.add('pulse');
+                link.style.color = 'var(--neon-purple)';
+            }
+        });
+    });
+</script>
+</body>
 </html>

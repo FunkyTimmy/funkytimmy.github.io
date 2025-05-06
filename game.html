@@ -149,9 +149,9 @@
         }
         
         .fullscreen-btn {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
+            gap: 8px;
             background: linear-gradient(to right, var(--primary), var(--secondary));
             color: white;
             padding: 10px 20px;
@@ -166,10 +166,16 @@
         .fullscreen-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+            background: linear-gradient(to right, var(--secondary), var(--primary));
         }
         
         .fullscreen-btn i {
-            margin-left: 8px;
+            font-size: 0.9em;
+            transition: transform 0.2s ease;
+        }
+        
+        .fullscreen-btn:hover i {
+            transform: scale(1.1);
         }
         
         .game-info {
@@ -259,6 +265,11 @@
             .game-stats {
                 flex-direction: column;
             }
+            
+            .fullscreen-btn {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -276,43 +287,44 @@
     <!-- Game Content -->
     <div class="game-page">
         <div class="game-header">
-            <h1 id="game-title">Game Title</h1>
-            <p id="game-description">Loading game description...</p>
+            <h1 id="game-title">Agar.io</h1>
+            <p id="game-description">Move your circle to eat smaller circles! Avoid larger circles!</p>
         </div>
         
         <div class="game-frame-container">
-            <iframe id="game-iframe" class="game-frame" src="" allowfullscreen></iframe>
+            <iframe id="game-iframe" class="game-frame" src="https://funkytimmy.github.io/agar-io" allowfullscreen></iframe>
             <div class="game-controls">
                 <div class="game-actions">
                     <button class="fullscreen-btn" onclick="toggleFullscreen()">
-                         <i class="fas fa-expand"> </i> Fullscreen
+                        <span>Fullscreen</span>
+                        <i class="fas fa-expand"></i>
                     </button>
                 </div>
                 <div class="game-status" id="game-status">
-                    <span>:)</span>
+                    <span>Ready to play!</span>
                 </div>
             </div>
         </div>
         
         <div class="game-info">
             <h2>About This Game</h2>
-            <p id="game-long-description">Loading detailed game information...</p>
+            <p id="game-long-description">Move a white circle around the screen and dodge other circles bigger than you! Eat up smaller circles while you can to grow and eat more circles!</p>
             
             <div class="game-stats">
                 <div class="stat-item">
                     <i class="fas fa-users"></i>
                     <h3>Players</h3>
-                    <p id="player-count">1M+</p>
+                    <p id="player-count">113M+</p>
                 </div>
                 <div class="stat-item">
                     <i class="fas fa-star"></i>
                     <h3>Rating</h3>
-                    <p id="game-rating">4.8/5</p>
+                    <p id="game-rating">3.9/5</p>
                 </div>
                 <div class="stat-item">
                     <i class="fas fa-calendar-alt"></i>
                     <h3>Released</h3>
-                    <p id="release-date">2023</p>
+                    <p id="release-date">2015</p>
                 </div>
             </div>
         </div>
@@ -350,23 +362,10 @@
             }
         };
         
-        // Get game parameter from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const gameName = urlParams.get('game') || 'game1';
-        const game = games[gameName] || games['game1'];
-        
-        // Set game content
-        document.getElementById('game-title').textContent = game.title;
-        document.getElementById('game-description').textContent = game.description;
-        document.getElementById('game-long-description').textContent = game.longDescription;
-        document.getElementById('game-iframe').src = game.url;
-        document.getElementById('player-count').textContent = game.players;
-        document.getElementById('game-rating').textContent = game.rating;
-        document.getElementById('release-date').textContent = game.released;
-        
         // Fullscreen functionality
         function toggleFullscreen() {
             const iframe = document.getElementById('game-iframe');
+            const fullscreenBtn = document.querySelector('.fullscreen-btn i');
             
             if (!document.fullscreenElement) {
                 if (iframe.requestFullscreen) {
@@ -377,19 +376,34 @@
                     iframe.msRequestFullscreen();
                 }
                 document.getElementById('game-status').innerHTML = '<span><i class="fas fa-expand"></i> Fullscreen mode</span>';
+                fullscreenBtn.classList.replace('fa-expand', 'fa-compress');
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
                 }
                 document.getElementById('game-status').innerHTML = '<span>Ready to play!</span>';
+                fullscreenBtn.classList.replace('fa-compress', 'fa-expand');
             }
         }
         
+        // Change icon when fullscreen state changes
+        document.addEventListener('fullscreenchange', () => {
+            const fullscreenBtn = document.querySelector('.fullscreen-btn i');
+            if (!document.fullscreenElement) {
+                fullscreenBtn.classList.replace('fa-compress', 'fa-expand');
+            }
+        });
+        
         // Add active class to current nav item
         const navLinks = document.querySelectorAll('.navbar a');
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameName = urlParams.get('game') || 'agar-io';
+        
         navLinks.forEach(link => {
             if (link.getAttribute('href').includes(gameName)) {
                 link.classList.add('active');
+            } else {
+                link.classList.remove('active');
             }
         });
         
@@ -398,6 +412,21 @@
         iframe.onload = function() {
             document.getElementById('game-status').innerHTML = '<span><i class="fas fa-check-circle"></i> Game loaded</span>';
         };
+        
+        // Set game content based on URL parameter
+        function setGameContent() {
+            const game = games[gameName] || games['agar-io'];
+            document.getElementById('game-title').textContent = game.title;
+            document.getElementById('game-description').textContent = game.description;
+            document.getElementById('game-long-description').textContent = game.longDescription;
+            document.getElementById('game-iframe').src = game.url;
+            document.getElementById('player-count').textContent = game.players;
+            document.getElementById('game-rating').textContent = game.rating;
+            document.getElementById('release-date').textContent = game.released;
+        }
+        
+        // Initialize game content
+        setGameContent();
     </script>
 </body>
 </html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Hub - Play Game</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .navbar a {
+            float: left;
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+            font-size: 17px;
+        }
+        
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        
+        .content {
+            margin-top: 60px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .game-frame-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .game-frame {
+            width: 100%;
+            height: 600px;
+            border: none;
+            background-color: white;
+        }
+        
+        .fullscreen-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 100;
+        }
+        
+        .fullscreen-btn:hover {
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .game-info {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="index.html">Home</a>
+        <a href="game.html?game=game1">Game 1</a>
+        <a href="game.html?game=game2">Game 2</a>
+        <a href="game.html?game=game3">Game 3</a>
+    </div>
+    
+    <div class="content">
+        <h1 id="game-title">Playing Game</h1>
+        
+        <div class="game-frame-container">
+            <iframe id="game-iframe" class="game-frame" src="" allowfullscreen></iframe>
+            <button class="fullscreen-btn" onclick="toggleFullscreen()">Fullscreen</button>
+        </div>
+        
+        <div class="game-info">
+            <p id="game-description">Enjoy playing this game! Use the fullscreen button for a better experience.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Get game parameter from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameName = urlParams.get('game');
+        
+        // Game data (in a real app, this might come from a database)
+        const games = {
+            'game1': {
+                title: 'Game 1',
+                url: 'https://example.com/game1',
+                description: 'This is the first game. Have fun playing!'
+            },
+            'game2': {
+                title: 'Game 2',
+                url: 'https://example.com/game2',
+                description: 'The second game with more challenging levels.'
+            },
+            'game3': {
+                title: 'Game 3',
+                url: 'https://example.com/game3',
+                description: 'Our most popular game with amazing graphics.'
+            }
+        };
+        
+        // Set game content
+        if (gameName && games[gameName]) {
+            const game = games[gameName];
+            document.getElementById('game-title').textContent = game.title;
+            document.getElementById('game-iframe').src = game.url;
+            document.getElementById('game-description').textContent = game.description;
+        } else {
+            // Default to first game if no valid game specified
+            const defaultGame = games['game1'];
+            document.getElementById('game-title').textContent = defaultGame.title;
+            document.getElementById('game-iframe').src = defaultGame.url;
+            document.getElementById('game-description').textContent = defaultGame.description;
+        }
+        
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            const iframe = document.getElementById('game-iframe');
+            
+            if (!document.fullscreenElement) {
+                if (iframe.requestFullscreen) {
+                    iframe.requestFullscreen();
+                } else if (iframe.webkitRequestFullscreen) { /* Safari */
+                    iframe.webkitRequestFullscreen();
+                } else if (iframe.msRequestFullscreen) { /* IE11 */
+                    iframe.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

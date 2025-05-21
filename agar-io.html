@@ -178,9 +178,9 @@
 <body>
     <div class="game-container">
         <div class="game-header">
-            <h1 class="game-title">Your Game Title</h1>
+            <h1 class="game-title">Agar.io</h1>
             <div class="controls">
-                <a href="index.html" class="control-btn">← Home</a>
+                <a href="https://test-gules-one-58.vercel.app/" class="control-btn">← Home</a>
                 <button class="control-btn" onclick="toggleFullscreen()">Fullscreen</button>
             </div>
         </div>
@@ -188,9 +188,9 @@
         <div class="game-frame" id="gameFrame">
             <div class="loading-message" id="loadingMessage">
                 <div class="loading-spinner"></div>
-                <p>Loading game...</p>
+                <p>Loading...</p>
             </div>
-            <!-- Replace 'your-game-file.html' with your actual game file -->
+            <!-- Replace the src with the game html file -->
             <iframe id="gameIframe" src="agrio-src.html" onload="hideLoading()"></iframe>
         </div>
     </div>
@@ -229,8 +229,7 @@
                 });
             }
         }
-
-        // Listen for fullscreen changes
+        
         document.addEventListener('fullscreenchange', function() {
             const gameFrame = document.getElementById('gameFrame');
             if (!document.fullscreenElement) {
@@ -238,14 +237,12 @@
             }
         });
 
-        // Handle escape key to exit fullscreen
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape' && document.fullscreenElement) {
                 exitFullscreen();
             }
         });
 
-        // Error handling for iframe loading
         document.getElementById('gameIframe').addEventListener('error', function() {
             const loadingMessage = document.getElementById('loadingMessage');
             loadingMessage.innerHTML = '<p>Failed to load game. Please check if the game file exists.</p>';

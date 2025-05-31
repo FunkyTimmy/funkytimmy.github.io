@@ -78,6 +78,8 @@ img {
   transition: var(--transition);
   border: none;
   cursor: pointer;
+  margin-right: 4px;
+  margin-left: 4px;
 }
 
 .cta-button.primary {
@@ -644,6 +646,7 @@ footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 7px;
 }
 
 .footer-social {

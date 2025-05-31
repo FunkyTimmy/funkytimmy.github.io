@@ -27,7 +27,7 @@ html {
 }
 
 body {
-    font-family: 'Poppins', sans-serif;
+    font-family: monospace;
     color: var(--dark-color);
     line-height: 1.6;
     background-color: var(--white);
@@ -184,6 +184,7 @@ img {
 .hero-content {
     max-width: 600px;
     padding: 2rem 0;
+    text-align: center;
 }
 
 .hero-title {

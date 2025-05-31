@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
+    emailjs.init('YOUR_PUBLIC_KEY');
+    
     // Mobile menu toggle
     const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
     const navLinks = document.querySelector('.nav-links');
@@ -105,17 +107,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentYear = new Date().getFullYear();
     document.getElementById('current-year').textContent = currentYear;
     
-    // Form submission
     const contactForm = document.querySelector('.contact-form');
     
     if (contactForm) {
         contactForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Here you would typically send the form data to a server
-            // For demonstration, we'll just show an alert
-            alert('Thank you for your message! I will get back to you soon.');
-            this.reset();
+            const formData = new FormData(this);
+            const name = formData.get('name') || 'Anonymous';
+            const email = formData.get('email') || 'No email provided';
+            const message = formData.get('message') || 'No message provided';
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            submitButton.textContent = 'Sending...';
+            submitButton.disabled = true;
+            
+            const templateParams = {
+                from_name: name,
+                from_email: email,
+                message: message,
+                to_email: 'philrow000@gmail.com'
+            };
+            
+            emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+                .then(function(response) {
+                    console.log('Email sent successfully!', response.status, response.text);
+                    alert('Thank you for your message! I will get back to you soon.');
+                    contactForm.reset();
+                })
+                .catch(function(error) {
+                    console.log('Failed to send email:', error);
+                    alert('Sorry, there was an error sending your message. Please try again or contact me directly at philrow000@gmail.com');
+                })
+                .finally(function() {
+                    submitButton.textContent = originalButtonText;
+                    submitButton.disabled = false;
+                });
         });
     }
     

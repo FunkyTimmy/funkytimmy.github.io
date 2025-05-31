@@ -78,8 +78,6 @@ img {
   transition: var(--transition);
   border: none;
   cursor: pointer;
-  margin-right: 4px;
-  margin-left: 4px;
 }
 
 .cta-button.primary {

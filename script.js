@@ -94,45 +94,5 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const currentYear = new Date().getFullYear();
     document.getElementById('current-year').textContent = currentYear;
-    
-
-    const contactForm = document.querySelector('.contact-form');
-    
-    if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitButton = this.querySelector('button[type="submit"]') || this.querySelector('input[type="submit"]');
-            const originalButtonText = submitButton.value || submitButton.textContent;
-            
-            if (submitButton.tagName === 'BUTTON') {
-                submitButton.textContent = 'Sending...';
-            } else {
-                submitButton.value = 'Sending...';
-            }
-            submitButton.disabled = true;
-            
-            emailjs.sendForm('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', this, {
-                publicKey: 'YOUR_PUBLIC_KEY'
-            })
-            .then(function() {
-                alert('Thank you for your message! I will get back to you soon.');
-                contactForm.reset();
-            })
-            .catch(function(error) {
-                console.error('EmailJS Error:', error);
-                alert('Sorry, there was an error sending your message. Please try again or contact me directly at philrow000@gmail.com');
-            })
-            .finally(function() {
-                if (submitButton.tagName === 'BUTTON') {
-                    submitButton.textContent = originalButtonText;
-                } else {
-                    submitButton.value = originalButtonText;
-                }
-                submitButton.disabled = false;
-            });
-        });
-    }
-    
     document.querySelector('.nav-link[href="#home"]').classList.add('active');
 });

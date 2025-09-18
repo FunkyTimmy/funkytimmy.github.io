@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Interactive Web Archiver</title>
+    <style>
+        :root {
+            --blue: #2563eb;
+            --muted: #6b7280;
+            --border-color: #dbe3f0;
+            --background: #f6f7fb;
+        }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 1rem;
+            background: var(--background);
+            color: #111;
+        }
+        header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        h1 { font-size: 1.25rem; margin: 0; }
+        input[type=text] { width: 100%; max-width: 500px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 1rem; }
+        select, button, input[type=number] { padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); background: white; font-family: inherit; font-size: inherit; }
+        label { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+        button.primary { background: var(--blue); color: white; border: 0; cursor: pointer; }
+        button.primary:disabled { background: #93c5fd; cursor: not-allowed; }
+        button.ghost { background: transparent; border: 1px solid #ddd; cursor: pointer; }
+        #log { white-space: pre-wrap; background: #fff; padding: 12px; border-radius: 8px; margin-top: 12px; border: 1px solid #e6e9ef; height: 250px; overflow: auto; font-family: monospace; font-size: 12px; line-height: 1.5; }
+        #previewWrap { margin-top: 12px; position: relative; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+        #preview { width: 100%; height: 540px; border: 0; }
+        .toolbar { position: absolute; right: 8px; top: 8px; display: flex; gap: 6px; z-index: 10; }
+        .muted { color: var(--muted); font-size: 13px; }
+        .flex { display: flex; gap: 8px; align-items: center; }
+        .input-group { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: 1rem; }
+
+        /* Fullscreen styles */
+        #previewWrap:fullscreen {
+            border: none;
+            border-radius: 0;
+        }
+        #previewWrap:fullscreen > #preview {
+            height: 100vh;
+        }
+        #previewWrap:fullscreen > .toolbar {
+            display: none; /* Hide toolbar in fullscreen */
+        }
+
+        /* Loader styles */
+        #loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <p>Processing... please wait.</p>
+</div>
+
+<header>
+    <div>
+        <h1>Archive URL (Beta)</h1>
+        <div class="muted">Click links in the preview below to archive them instantly.</div>
+    </div>
+</header>
+
+<div class="input-group">
+    <input id="url" type="text" placeholder="https://example.com" value="https://wikipedia.org/wiki/World_Wide_Web">
+    <select id="proxyStrategy" title="Choose a fetch strategy"></select>
+    <select id="mode" title="Choose how resources are handled">
+        <optgroup label="Live (Fastest)">
+            <option value="live">Live — Keep all resources remote</option>
+        </optgroup>
+        <optgroup label="Hybrid Modes (Balanced)">
+            <option value="hybrid-css">Hybrid — Inline CSS only</option>
+            <option value="hybrid-css-fonts">Hybrid — Inline CSS & Fonts</option>
+            <option value="hybrid-css-images" selected>Hybrid — Inline CSS & Images (Recommended)</option>
+        </optgroup>
+        <optgroup label="Offline Modes (Most Portable)">
+            <option value="offline-all">Offline — Inline All Assets (CSS, JS, Images, Fonts)</option>
+            <option value="offline-no-js">Offline — Inline All except Scripts</option>
+            <option value="offline-no-media">Offline — Inline All except Media (Images, Video)</option>
+            <option value="offline-single-file">Offline — Force everything to be inlined as data URIs</option>
+            <option value="html-only">Structure Only — Keep HTML, remove external assets</option>
+            <option value="text-only">Text Only — Basic HTML text content, no styles or scripts</option>
+        </optgroup>
+    </select>
+</div>
+
+<div class="controls">
+    <label><input id="removeScripts" type="checkbox"> Remove All &lt;script&gt; tags</label>
+    <label>Concurrency <input id="concurrency" type="number" value="8" style="width:72px" title="Number of assets to download at once"></label>
+    <label>Max Asset Size (KB) <input id="maxBytes" type="number" value="2000" style="width:120px"></label>
+    <div style="margin-left:auto" class="flex">
+        <button id="load" class="primary">Load & Generate</button>
+        <button id="saveFile" class="ghost" title="Download the result as an HTML file">Save as File</button>
+        <button id="openTab" class="ghost" title="Open the result in a new tab">Open in Tab</button>
+        <button id="viewSource" class="ghost" title="View the generated HTML source code">View Source</button>
+    </div>
+</div>
+
+<label style="margin-top:12px;display:block">Log / Progress</label>
+<div id="log">Ready. Enter a URL and click "Load & Generate".</div>
+
+<label style="margin-top:12px;display:block">Preview</label>
+<div id="previewWrap" title="Links clicked inside this preview will be automatically archived.">
+    <div class="toolbar">
+        <button id="fullscreenBtn" class="ghost"></button>
+    </div>
+    <iframe id="preview" sandbox="allow-scripts allow-forms allow-popups"></iframe>
+</div>
+
+<script>
+(() => {
+    // --- ELEMENT SELECTORS ---
+    const $ = id => document.getElementById(id);
+    const logEl = $('log');
+    const previewFrame = $('preview');
+    const loadBtn = $('load');
+    const loader = $('loader');
+    const proxySelect = $('proxyStrategy');
+    const fullscreenBtn = $('fullscreenBtn');
+
+    // --- CONFIGURATION ---
+    const PROXIES = {
+        'all-in-order': url => `placeholder`, // Special value
+        'codetabs': url => `https://api.codetabs.com/v1/proxy?quest=${url}`,
+        'allorigins': url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        'thingproxy': url => `https://thingproxy.freeboard.io/fetch/${url}`,
+        'corsproxy.io': url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        'none': url => url
+    };
+    Object.keys(PROXIES).forEach(key => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = key.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        if (key === 'none') option.textContent += ' (Direct)';
+        if (key === 'all-in-order') option.textContent = 'Try All Proxies (Recommended)';
+        proxySelect.appendChild(option);
+    });
+    proxySelect.value = 'all-in-order';
+
+    // --- UI & LOGGING ---
+    const log = (...parts) => {
+        const timestamp = new Date().toLocaleTimeString();
+        logEl.textContent += `[${timestamp}] ${parts.join(' ')}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+    const clearLog = () => { logEl.textContent = ''; };
+    const showLoader = () => { loader.style.display = 'flex'; loadBtn.disabled = true; };
+    const hideLoader = () => { loader.style.display = 'none'; loadBtn.disabled = false; };
+
+    // --- NETWORKING & UTILITIES ---
+    async function fetchWithFallbacks(url, options = {}) {
+        const { as = 'text', maxBytes, timeout = 25000 } = options;
+        const strategy = proxySelect.value;
+        const urlsToTry = [];
+        const proxyKeys = Object.keys(PROXIES).filter(k => k !== 'all-in-order' && k !== 'none');
+
+        if (strategy === 'all-in-order') {
+            urlsToTry.push(...proxyKeys.map(key => PROXIES[key](url)), url);
+        } else if (PROXIES[strategy]) {
+            urlsToTry.push(PROXIES[strategy](url));
+            if (strategy !== 'none') urlsToTry.push(url);
+        }
+
+        for (const fetchUrl of urlsToTry) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort('Timeout'), timeout);
+            try {
+                const proxyHost = fetchUrl !== url ? ` via ${new URL(fetchUrl).hostname}` : ' (direct)';
+                log(`  Fetching ${new URL(url).hostname}${proxyHost}`);
+                const resp = await fetch(fetchUrl, { signal: controller.signal, redirect: 'follow' });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const result = (as === 'arrayBuffer') ? await resp.arrayBuffer() : await resp.text();
+                if (maxBytes && result.byteLength > maxBytes) {
+                    throw new Error(`Asset too large: ${result.byteLength} > ${maxBytes} bytes`);
+                }
+                clearTimeout(timer);
+                return result;
+            } catch (err) {
+                clearTimeout(timer);
+                log(`    Failed: ${err.message}`);
+            }
+        }
+        throw new Error(`All fetch attempts failed for ${url}`);
+    }
+
+    function promisePool(functions, limit) {
+        let i = 0;
+        const results = [];
+        const executing = new Set();
+        const enqueue = () => {
+            if (i === functions.length) return Promise.resolve();
+            const idx = i++;
+            const p = Promise.resolve().then(() => functions[idx]()).then(r => results[idx] = r, e => results[idx] = e);
+            executing.add(p);
+            const cleanup = () => executing.delete(p);
+            p.then(cleanup, cleanup);
+            let r = Promise.resolve();
+            if (executing.size >= limit) r = Promise.race(executing);
+            return r.then(enqueue);
+        };
+        return enqueue().then(() => Promise.all(executing)).then(() => results);
+    }
+
+    const arrayBufferToDataUrl = (buffer, mime) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(new Blob([buffer], { type: mime || 'application/octet-stream' }));
+    });
+
+    const absolutify = (base, rel) => { try { return new URL(rel, base).href; } catch (e) { return rel; } };
+
+    // --- CORE SNAPSHOT LOGIC ---
+    function shouldInline(url, type, mode) {
+        if (!url || url.startsWith('data:')) return false;
+        switch (mode) {
+            case 'live': return false;
+            case 'hybrid-css': return type === 'css';
+            case 'hybrid-css-fonts': return type === 'css' || type === 'font';
+            case 'hybrid-css-images': return type === 'css' || type === 'image';
+            case 'offline-all': case 'offline-single-file': return true;
+            case 'offline-no-js': return type !== 'script';
+            case 'offline-no-media': return type !== 'image' && type !== 'video';
+            default: return false;
+        }
+    }
+
+    async function generateSnapshot(originalUrl, options) {
+        clearLog();
+        log('Starting snapshot for', originalUrl, 'with mode:', options.mode);
+        const html = await fetchWithFallbacks(originalUrl, { as: 'text' });
+        log('Fetched initial HTML:', `${(html.length / 1024).toFixed(1)} KB`);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const baseHref = doc.querySelector('base')?.href || originalUrl;
+        const dataCache = new Map();
+        const textCache = new Map();
+
+        const fetchAndCache = async (url, as) => {
+            const absUrl = absolutify(baseHref, url);
+            const cache = as === 'text' ? textCache : dataCache;
+            if (cache.has(absUrl)) return cache.get(absUrl);
+            try {
+                const content = await fetchWithFallbacks(absUrl, { as, maxBytes: options.maxBytes * 1024 });
+                cache.set(absUrl, content);
+                return content;
+            } catch (err) {
+                log(`  Asset failed [${as}]: ${url} - ${err.message}`);
+                throw err;
+            }
+        };
+
+        const fetchAndConvertToDataURL = async (url) => {
+            const buf = await fetchAndCache(url, 'arrayBuffer');
+            const ext = url.split('.').pop().split(/[?#]/)[0].toLowerCase();
+            const mimeMap = {
+                svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', ico: 'image/x-icon',
+                avif: 'image/avif', woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf'
+            };
+            return arrayBufferToDataUrl(buf, mimeMap[ext]);
+        };
+        const tasks = [];
+        if (options.removeScripts) {
+            doc.querySelectorAll('script').forEach(s => s.remove());
+            log('Removed all script tags.');
+        } else {
+            for (const script of doc.querySelectorAll('script[src]')) {
+                if (shouldInline(script.src, 'script', options.mode)) {
+                    tasks.push(async () => {
+                        try {
+                            const js = await fetchAndCache(script.src, 'text');
+                            const newScript = doc.createElement('script');
+                            if (script.type) newScript.type = script.type;
+                            newScript.textContent = js;
+                            script.replaceWith(newScript);
+                            log(`  Inlined script: ${script.src}`);
+                        } catch (e) { /* error logged in fetcher */ }
+                    });
+                }
+            }
+        }
+        for (const link of doc.querySelectorAll('link[rel="stylesheet"][href]')) {
+            if (shouldInline(link.href, 'css', options.mode)) {
+                tasks.push(async () => {
+                    try {
+                        let css = await fetchAndCache(link.href, 'text');
+                        const processCssUrls = async (cssText, baseUrl) => {
+                            const urlRegex = /(url\((['"]?)(.*?)\2\))|(@import\s*(['"])(.*?)\5)/gi;
+                            const cssTasks = [];
+                            cssText.replace(urlRegex, (match, urlMatch, _q1, urlPath, importMatch, _q2, importPath) => {
+                                const resourceUrl = urlPath || importPath;
+                                if (!resourceUrl || resourceUrl.startsWith('data:')) return;
+                                const isImport = !!importMatch;
+                                const absResourceUrl = absolutify(baseUrl, resourceUrl);
+                                cssTasks.push(async () => {
+                                    try {
+                                        if (isImport) {
+                                            const importedCss = await fetchAndCache(absResourceUrl, 'text');
+                                            const nestedCss = await processCssUrls(importedCss, absResourceUrl);
+                                            cssText = cssText.replace(match, nestedCss);
+                                        } else {
+                                            const dataUrl = await fetchAndConvertToDataURL(absResourceUrl);
+                                            cssText = cssText.replace(match, `url("${dataUrl}")`);
+                                        }
+                                    } catch (e) {
+                                        log(`  Failed processing CSS resource: ${resourceUrl}`);
+                                    }
+                                });
+                            });
+                            await Promise.all(cssTasks.map(fn => fn()));
+                            return cssText;
+                        };
+                        const inlinedCss = await processCssUrls(css, link.href);
+                        const styleEl = doc.createElement('style');
+                        styleEl.textContent = inlinedCss;
+                        link.replaceWith(styleEl);
+                        log(`  Inlined CSS: ${link.href}`);
+                    } catch (e) { /* error logged in fetcher */ }
+                });
+            }
+        }
+        const mediaSelectors = 'img[src], source[srcset], video[poster], image[href]';
+        for (const el of doc.querySelectorAll(mediaSelectors)) {
+            const processAttr = (attrName) => {
+                const attrValue = el.getAttribute(attrName);
+                if (!attrValue) return;
+                const candidates = attrName === 'srcset' ? attrValue.split(',').map(s => s.trim().split(/\s+/)[0]) : [attrValue];
+                for (const url of candidates) {
+                    if (shouldInline(url, 'image', options.mode)) {
+                        tasks.push(async () => {
+                            try {
+                                const dataUrl = await fetchAndConvertToDataURL(url);
+                                if (attrName === 'srcset') {
+                                    el.removeAttribute('srcset');
+                                    if (!el.hasAttribute('src')) el.setAttribute('src', dataUrl);
+                                } else {
+                                    el.setAttribute(attrName, dataUrl);
+                                }
+                                log(`  Inlined media: ${url}`);
+                            } catch (e) { /* error logged in fetcher */ }
+                        });
+                        if (attrName === 'srcset') break;
+                    }
+                }
+            };
+            ['src', 'srcset', 'poster', 'href'].forEach(processAttr);
+        }
+        log(`Found ${tasks.length} assets to process...`);
+        await promisePool(tasks, options.concurrency);
+        log('Asset processing complete.');
+        log('Performing final cleanup...');
+        if (options.mode === 'html-only' || options.mode === 'text-only') {
+            doc.querySelectorAll('link[rel=stylesheet], style').forEach(el => el.remove());
+        }
+        if (options.mode === 'text-only') {
+            ['header', 'nav', 'footer', 'aside', 'figure', 'img', 'video', 'audio'].forEach(sel => {
+                doc.querySelectorAll(sel).forEach(el => el.remove());
+            });
+        }
+        doc.querySelectorAll('[integrity], [crossorigin], [nonce]').forEach(el => {
+            ['integrity', 'crossorigin', 'nonce'].forEach(attr => el.removeAttribute(attr));
+        });
+        ['a[href]', 'form[action]'].forEach(selector => {
+            const attr = selector.includes('action') ? 'action' : 'href';
+            doc.querySelectorAll(selector).forEach(n => {
+                const v = n.getAttribute(attr);
+                if (v) n.setAttribute(attr, absolutify(baseHref, v));
+            });
+        });
+        const interceptorScript = doc.createElement('script');
+        interceptorScript.textContent = `
+            document.addEventListener('DOMContentLoaded', () => {
+                document.body.addEventListener('click', event => {
+                    const link = event.target.closest('a[href]');
+                    if (link && !link.href.startsWith('javascript:')) {
+                        event.preventDefault();
+                        window.parent.postMessage({ type: 'navigate', url: link.href }, '*');
+                    }
+                });
+            });
+        `;
+        doc.body.appendChild(interceptorScript);
+        log('✔ Injected navigation script into the preview.');
+        const comment = doc.createComment(`\nSnapshot generated from ${originalUrl} on ${new Date().toISOString()}\nMode: ${options.mode}\n`);
+        doc.prepend(comment);
+        return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+    }
+
+    async function startArchiving() {
+        let url = $('url').value.trim();
+        if (!url) { log('Please enter a URL.'); return; }
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+            $('url').value = url;
+        }
+        const opts = {
+            mode: $('mode').value,
+            removeScripts: $('removeScripts').checked,
+            maxBytes: parseInt($('maxBytes').value, 10) || 2000,
+            concurrency: parseInt($('concurrency').value, 10) || 8
+        };
+        showLoader();
+        try {
+            const snapshot = await generateSnapshot(url, opts);
+            previewFrame.srcdoc = snapshot;
+            previewFrame._lastGenerated = snapshot;
+            log('\n--- Done! Preview is ready. ---');
+        } catch (err) {
+            log('Archiving failed:', (err && err.message) ? err.message : err);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // --- UI EVENT LISTENERS ---
+    loadBtn.addEventListener('click', startArchiving);
+
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'navigate') {
+            const newUrl = event.data.url;
+            log(`➡Intercepted navigation to: ${newUrl}`);
+            $('url').value = newUrl;
+            startArchiving();
+        }
+    });
+
+    const getData = () => {
+        if (!previewFrame._lastGenerated) { alert('Click "Load & Generate" first.'); return null; }
+        return previewFrame._lastGenerated;
+    };
+
+    $('saveFile').addEventListener('click', () => {
+        const data = getData();
+        if (!data) return;
+        const blob = new Blob([data], { type: 'text/html;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        let domain = 'snapshot';
+        try { domain = new URL($('url').value).hostname; } catch (e) {}
+        a.download = `archive-${domain}-${new Date().toISOString().slice(0, 10)}.html`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+
+    $('openTab').addEventListener('click', () => {
+        const data = getData();
+        if (!data) return;
+        const blob = new Blob([data], { type: 'text/html;charset=utf-8' });
+        window.open(URL.createObjectURL(blob), '_blank');
+    });
+
+    $('viewSource').addEventListener('click', () => {
+        const data = getData();
+        if (!data) return;
+        const newWindow = window.open();
+        newWindow.document.write('<pre style="white-space:pre-wrap; word-wrap:break-word; font-family:monospace;"></pre>');
+        newWindow.document.querySelector('pre').textContent = data;
+        newWindow.document.close();
+    });
+
+    // Fullscreen logic
+    const updateFullscreenButton = () => {
+        fullscreenBtn.textContent = document.fullscreenElement ? '⤡ Exit Fullscreen' : '⤢ Enter Fullscreen';
+    };
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            $('previewWrap').requestFullscreen().catch(err => log(`Error attempting to enable full-screen mode: ${err.message}`));
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    
+    // Initialize button text on load
+    updateFullscreenButton();
+
+})();
+</script>
+</body>
+</html>

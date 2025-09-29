@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <h1 id="txt">You do not have text!</h1>
+<input id="input" type="text" placeholder="Input text here">
+
+<script>
+  function GE(id) {
+    return document.getElementById(id);
+  }
+
+  function setCookie(name, value, days) {
+
+      document.cookie = name + "=" + (value || "");
+  }
+
+  function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+          let c = ca[i];
+          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+          if (c.indexOf(nameEQ) === 0) {
+              return c.substring(nameEQ.length, c.length);
+          }
+      }
+      return null;
+  }
+
+  const txt = GE("txt");
+  const input = GE("input");
+
+  const loadedString = getCookie("num");
+  txt.textContent = loadedString;
+  if (loadedString) {
+      txt.textContent = loadedString;
+  } else {
+      txt.textContent = "Nope!";
+  }
+
+  input.addEventListener("blur", function() {
+    setCookie("num", input.value);
+    txt.textContent = input.value;
+  })
+</script>
+</html>

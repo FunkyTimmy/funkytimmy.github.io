@@ -1,66 +1,106 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>DEBUG Proxy Client</title></head>
+<head>
+  <meta charset="utf-8" />
+  <title>Proxy Client</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Arial;max-width:980px;margin:18px auto;padding:12px}
+    input,select,button{width:100%;padding:8px;margin-top:6px;box-sizing:border-box}
+    pre{background:#f6f7f9;padding:12px;border-radius:8px;overflow:auto;max-height:320px;white-space:pre-wrap}
+    .row{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}
+    .preview{border:1px solid #eee;padding:8px;border-radius:8px;min-height:140px;display:flex;align-items:center;justify-content:center}
+    .meta{color:#444;margin-top:6px;font-size:.95rem}
+  </style>
+</head>
 <body>
-  <h2>DEBUG: Proxy client runner</h2>
-  <p>Open DevTools (F12) → Console and Network. Click Fetch.</p>
-
-  <label>Server IP</label>
-  <input id="serverIp" value="127.0.0.1">
-  <label>Port</label>
-  <input id="serverPort" type="number" value="8080">
-  <label>Target URL</label>
-  <input id="target" value="https://example.com" style="width:100%">
-
+  <h2>Proxy client</h2>
+  <label>Server IP or full proxy URL (IP or https://example.ngrok.io)</label>
+  <input id="serverRaw" placeholder="192.168.86.41 or https://abc.ngrok.io" value="127.0.0.1">
+  <label>Port (used only when you input an IP)</label>
+  <input id="serverPort" type="number" value="8080" min="1" max="65535">
+  <label>Target URL (https://...)</label>
+  <input id="targetUrl" placeholder="https://example.com" value="https://example.com">
   <button id="fetchBtn">Fetch via proxy</button>
-  <pre id="log" style="white-space:pre-wrap;background:#eee;padding:8px"></pre>
-
+  <div class="meta" id="status">Ready</div>
+  <div class="row" style="margin-top:12px">
+    <div>
+      <div class="meta" id="responseMeta"></div>
+      <pre id="headers">No headers yet</pre>
+      <pre id="output">No response yet</pre>
+    </div>
+    <div>
+      <label>Preview</label>
+      <div class="preview" id="preview">No preview</div>
+      <div class="meta">Content-type: <span id="ct">-</span></div>
+      <div id="downloadArea"></div>
+    </div>
+  </div>
 <script>
-console.log("DEBUG client script loaded"); 
-document.getElementById('log').textContent += "DEBUG: script loaded\n";
-
-function log(s){ console.log(s); document.getElementById('log').textContent += s + "\n"; }
-
-function buildBase(){
-  const ip=document.getElementById('serverIp').value.trim();
-  const port=document.getElementById('serverPort').value.trim()||'8080';
-  return 'http://'+ip+':'+port;
+function buildProxyBase(){
+  const raw = document.getElementById("serverRaw").value.trim();
+  const port = (document.getElementById("serverPort").value||"8080").trim();
+  if(!raw) return null;
+  if(/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/,"");
+  const host = raw.replace(/^\/\//,"");
+  const scheme = location.protocol === "https:" ? "https" : "http";
+  return scheme + "://" + host + (host.includes(":") ? "" : ":" + port);
 }
-
-document.getElementById('fetchBtn').addEventListener('click', async ()=>{
-  const base = buildBase();
-  const target = document.getElementById('target').value.trim();
-  if(!base || !target){ alert('fill fields'); return; }
-  const endpoint = base.replace(/\/+$/,"") + '/proxy?url=' + encodeURIComponent(target);
-  log('Requesting: ' + endpoint);
-
+function setStatus(s){ document.getElementById("status").textContent = s; }
+async function fetchViaProxy(){
+  const base = buildProxyBase();
+  const target = document.getElementById("targetUrl").value.trim();
+  if(!base) return alert("Enter server IP or proxy URL");
+  if(!target) return alert("Enter target URL");
+  setStatus("Requesting...");
+  document.getElementById("headers").textContent = "";
+  document.getElementById("output").textContent = "";
+  document.getElementById("preview").innerHTML = "Loading...";
+  document.getElementById("ct").textContent = "-";
   try{
-    const res = await fetch(endpoint, { method:'GET', mode:'cors' });
-    log('Fetch returned, status: ' + res.status + ' ' + res.statusText);
-    const headers = {};
-    res.headers.forEach((v,k)=> headers[k]=v);
-    log('Response headers: ' + JSON.stringify(headers,null,2));
-    const ct = res.headers.get('content-type') || '[none]';
-    log('Content-Type: ' + ct);
-
+    const endpoint = base.replace(/\/+$/,"") + "/proxy?url=" + encodeURIComponent(target);
+    const res = await fetch(endpoint, { method:"GET", mode:"cors" });
+    document.getElementById("responseMeta").textContent = `HTTP ${res.status} ${res.statusText}`;
+    const hdrs = {}; res.headers.forEach((v,k)=> hdrs[k]=v);
+    document.getElementById("headers").textContent = JSON.stringify(hdrs,null,2);
+    const ct = res.headers.get("content-type") || "";
+    document.getElementById("ct").textContent = ct;
     if(!res.ok){
-      const body = await res.text().catch(()=>"[no-body]");
-      log('Non-OK body:\n' + body);
+      const txt = await res.text().catch(()=>"[no-body]");
+      document.getElementById("output").textContent = "Error response:\n" + txt;
+      document.getElementById("preview").innerHTML = "Error";
+      setStatus("Done (error)");
       return;
     }
-
-    if(ct.startsWith('text/') || ct.includes('html') || ct.includes('json')){
+    if(ct.startsWith("text/") || ct.includes("json") || ct.includes("html") || ct.includes("xml")){
       const txt = await res.text();
-      log('Text body (first 1000 chars):\n' + txt.slice(0,1000));
-    } else {
+      document.getElementById("output").textContent = txt.slice(0,200000);
+      document.getElementById("preview").innerHTML = "Text response shown";
+      setStatus("Done");
+    }else{
       const blob = await res.blob();
-      log('Binary body size: ' + blob.size);
+      document.getElementById("output").textContent = `Binary response ${blob.size} bytes`;
+      const urlObj = URL.createObjectURL(blob);
+      document.getElementById("downloadArea").innerHTML = `<a href="${urlObj}" download="downloaded">Download</a>`;
+      if(ct.startsWith("image/")){
+        const img = document.createElement("img"); img.src = urlObj; img.style.maxWidth="100%";
+        document.getElementById("preview").innerHTML = ""; document.getElementById("preview").appendChild(img);
+      }else if(ct.includes("pdf")){
+        const embed = document.createElement("embed"); embed.src = urlObj; embed.type="application/pdf"; embed.style.width="100%"; embed.style.height="420px";
+        document.getElementById("preview").innerHTML=""; document.getElementById("preview").appendChild(embed);
+      }else{
+        document.getElementById("preview").textContent = `Binary (${ct}). Use download link.`;
+      }
+      setStatus("Done");
     }
-  } catch(err){
-    log('Fetch failed: ' + err);
+  }catch(err){
+    document.getElementById("output").textContent = ""+err;
+    document.getElementById("preview").innerHTML = "Fetch error";
+    setStatus("Network/error");
     console.error(err);
   }
-});
+}
+document.getElementById("fetchBtn").addEventListener("click", fetchViaProxy);
 </script>
 </body>
 </html>

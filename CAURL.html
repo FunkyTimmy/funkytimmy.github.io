@@ -1,106 +1,44 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Proxy Client</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xbox Cloud Gaming Launcher</title>
   <style>
-    body{font-family:system-ui,Arial;max-width:980px;margin:18px auto;padding:12px}
-    input,select,button{width:100%;padding:8px;margin-top:6px;box-sizing:border-box}
-    pre{background:#f6f7f9;padding:12px;border-radius:8px;overflow:auto;max-height:320px;white-space:pre-wrap}
-    .row{display:grid;grid-template-columns:1fr 300px;gap:12px;align-items:start}
-    .preview{border:1px solid #eee;padding:8px;border-radius:8px;min-height:140px;display:flex;align-items:center;justify-content:center}
-    .meta{color:#444;margin-top:6px;font-size:.95rem}
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 100px;
+      background-color: #101010;
+      color: white;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background-color: #107C10;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0E6C0E;
+    }
   </style>
 </head>
 <body>
-  <h2>Proxy client</h2>
-  <label>Server IP or full proxy URL (IP or https://example.ngrok.io)</label>
-  <input id="serverRaw" placeholder="192.168.86.41 or https://abc.ngrok.io" value="127.0.0.1">
-  <label>Port (used only when you input an IP)</label>
-  <input id="serverPort" type="number" value="8080" min="1" max="65535">
-  <label>Target URL (https://...)</label>
-  <input id="targetUrl" placeholder="https://example.com" value="https://example.com">
-  <button id="fetchBtn">Fetch via proxy</button>
-  <div class="meta" id="status">Ready</div>
-  <div class="row" style="margin-top:12px">
-    <div>
-      <div class="meta" id="responseMeta"></div>
-      <pre id="headers">No headers yet</pre>
-      <pre id="output">No response yet</pre>
-    </div>
-    <div>
-      <label>Preview</label>
-      <div class="preview" id="preview">No preview</div>
-      <div class="meta">Content-type: <span id="ct">-</span></div>
-      <div id="downloadArea"></div>
-    </div>
-  </div>
-<script>
-function buildProxyBase(){
-  const raw = document.getElementById("serverRaw").value.trim();
-  const port = (document.getElementById("serverPort").value||"8080").trim();
-  if(!raw) return null;
-  if(/^https?:\/\//i.test(raw)) return raw.replace(/\/+$/,"");
-  const host = raw.replace(/^\/\//,"");
-  const scheme = location.protocol === "https:" ? "https" : "http";
-  return scheme + "://" + host + (host.includes(":") ? "" : ":" + port);
-}
-function setStatus(s){ document.getElementById("status").textContent = s; }
-async function fetchViaProxy(){
-  const base = buildProxyBase();
-  const target = document.getElementById("targetUrl").value.trim();
-  if(!base) return alert("Enter server IP or proxy URL");
-  if(!target) return alert("Enter target URL");
-  setStatus("Requesting...");
-  document.getElementById("headers").textContent = "";
-  document.getElementById("output").textContent = "";
-  document.getElementById("preview").innerHTML = "Loading...";
-  document.getElementById("ct").textContent = "-";
-  try{
-    const endpoint = base.replace(/\/+$/,"") + "/proxy?url=" + encodeURIComponent(target);
-    const res = await fetch(endpoint, { method:"GET", mode:"cors" });
-    document.getElementById("responseMeta").textContent = `HTTP ${res.status} ${res.statusText}`;
-    const hdrs = {}; res.headers.forEach((v,k)=> hdrs[k]=v);
-    document.getElementById("headers").textContent = JSON.stringify(hdrs,null,2);
-    const ct = res.headers.get("content-type") || "";
-    document.getElementById("ct").textContent = ct;
-    if(!res.ok){
-      const txt = await res.text().catch(()=>"[no-body]");
-      document.getElementById("output").textContent = "Error response:\n" + txt;
-      document.getElementById("preview").innerHTML = "Error";
-      setStatus("Done (error)");
-      return;
-    }
-    if(ct.startsWith("text/") || ct.includes("json") || ct.includes("html") || ct.includes("xml")){
-      const txt = await res.text();
-      document.getElementById("output").textContent = txt.slice(0,200000);
-      document.getElementById("preview").innerHTML = "Text response shown";
-      setStatus("Done");
-    }else{
-      const blob = await res.blob();
-      document.getElementById("output").textContent = `Binary response ${blob.size} bytes`;
-      const urlObj = URL.createObjectURL(blob);
-      document.getElementById("downloadArea").innerHTML = `<a href="${urlObj}" download="downloaded">Download</a>`;
-      if(ct.startsWith("image/")){
-        const img = document.createElement("img"); img.src = urlObj; img.style.maxWidth="100%";
-        document.getElementById("preview").innerHTML = ""; document.getElementById("preview").appendChild(img);
-      }else if(ct.includes("pdf")){
-        const embed = document.createElement("embed"); embed.src = urlObj; embed.type="application/pdf"; embed.style.width="100%"; embed.style.height="420px";
-        document.getElementById("preview").innerHTML=""; document.getElementById("preview").appendChild(embed);
-      }else{
-        document.getElementById("preview").textContent = `Binary (${ct}). Use download link.`;
-      }
-      setStatus("Done");
-    }
-  }catch(err){
-    document.getElementById("output").textContent = ""+err;
-    document.getElementById("preview").innerHTML = "Fetch error";
-    setStatus("Network/error");
-    console.error(err);
-  }
-}
-document.getElementById("fetchBtn").addEventListener("click", fetchViaProxy);
-</script>
+  <h1>Xbox Cloud Gaming</h1>
+  <input id="username" placeholder="Enter your name">
+  <button id="go">Go to Xbox Cloud Gaming</button>
+
+  <script>
+    document.getElementById('go').onclick = () => {
+      const name = document.getElementById('username').value.trim();
+      alert(`Welcome ${name || 'Player'}! Redirecting you to Xbox Cloud Gaming...`);
+      window.location.href = "https://www.xbox.com/en-US/play";
+    };
+  </script>
 </body>
 </html>

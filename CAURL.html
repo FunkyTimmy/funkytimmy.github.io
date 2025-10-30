@@ -1,44 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Xbox Cloud Gaming Launcher</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 100px;
-      background-color: #101010;
-      color: white;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-    }
-    button {
-      background-color: #107C10;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0E6C0E;
-    }
-  </style>
+  <title>Xbox Cloud Gaming Redirect</title>
 </head>
 <body>
-  <h1>Xbox Cloud Gaming</h1>
-  <input id="username" placeholder="Enter your name">
-  <button id="go">Go to Xbox Cloud Gaming</button>
+  <h1>Xbox Cloud Gaming Launcher</h1>
+  <button onclick="launchXbox()">Go to Xbox Cloud Gaming</button>
 
   <script>
-    document.getElementById('go').onclick = () => {
-      const name = document.getElementById('username').value.trim();
-      alert(`Welcome ${name || 'Player'}! Redirecting you to Xbox Cloud Gaming...`);
-      window.location.href = "https://www.xbox.com/en-US/play";
-    };
+    function launchXbox() {
+      fetch('/launch', { method: 'POST' })
+        .then(response => response.text())
+        .then(data => alert(data))
+        .catch(error => alert('Error: ' + error));
+    }
   </script>
 </body>
 </html>
